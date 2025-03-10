@@ -180,7 +180,7 @@ RAW_DIR.mkdir(exist_ok=True)
 
 
 def download_data(site: str, date: datetime.date, hour: int) -> Path:
-    prefix = f"{date:%y%m%d}_{hour}00"
+    prefix = f"{date:%y%m%d}_{hour:02}00"
     suffix = "_ZEN.LV0"
     params = {
         "site": site,

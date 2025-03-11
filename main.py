@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import requests
+from matplotlib.axis import Axis
 from numpy import ma
 from rpgpy import read_rpg
 from rpgpy.spcutil import radar_moment_calculation
@@ -62,35 +63,29 @@ def filter_hot(data: npt.NDArray) -> npt.NDArray:
     return np.where(is_hot, 0, data)
 
 
-def plot_all(data: list[Profile], title: str):
+def plot_all(data: list[Profile], ax: Axis):
     mean_vel = np.array([calc_mean_vel(p) for p in data])
-    plt.figure()
-    plt.title(title)
-    plt.pcolormesh(
-        np.arange(len(data)), np.concat(data[0].alts), mean_vel.T, cmap="RdBu_r"
+    ax.pcolormesh(
+        np.arange(len(data)),
+        np.concat(data[0].alts),
+        mean_vel.T,
+        cmap="RdBu_r",
+        vmin=-10,
+        vmax=10,
     )
-    plt.clim(-10, 10)
-    plt.colorbar(label="Velocity (m s$^{-1}$)")
-    plt.xlabel("Time index")
-    plt.ylabel("Range (m)")
+    # ax.clim(-10, 10)
 
 
-def plot_profile(p: Profile, title: str):
-    plt.figure(figsize=(5, 10))
-    plt.tight_layout()
-    plt.title(title)
+def plot_profile(p: Profile, ax: Axis):
     max_vel = np.max([np.max(v) for v in p.vels])
     min_vel = np.min([np.min(v) for v in p.vels])
     for vel, alt, spec in zip(p.vels, p.alts, p.data):
         spec = ma.masked_where(spec == 0, spec)
         spec = 10 * ma.log10(spec)
-        plt.pcolormesh(vel, alt, spec)
-        plt.fill_between([min_vel, vel[0]], alt[0], alt[-1], color="silver", alpha=0.5)
-        plt.fill_between([vel[-1], max_vel], alt[0], alt[-1], color="silver", alpha=0.5)
-    # plt.plot(calc_mean_vel(p), np.concat(p.alts), "r")
-    plt.xlabel("Velocity (m s$^{-1}$)")
-    plt.ylabel("Range (m)")
-    # plt.colorbar()
+        ax.pcolormesh(vel, alt, spec)
+        ax.fill_between([min_vel, vel[0]], alt[0], alt[-1], color="silver", alpha=0.5)
+        ax.fill_between([vel[-1], max_vel], alt[0], alt[-1], color="silver", alpha=0.5)
+    # ax.plot(calc_mean_vel(p), np.concat(p.alts), "r")
 
 
 def dealias_by_mean(p: Profile):
@@ -260,18 +255,38 @@ def main():
     filename = download_data(args.site, args.date, args.hour)
     print("Reading file...")
     profiles = read_profiles(filename)
-    plot_all(profiles, "mean vel")
+
+    if args.profiles:
+        profiles = [profiles[i] for i in args.profiles]
 
     print("Dealiasing...")
     dealiased = []
     for i, p in enumerate(tqdm(profiles)):
         offsets = dealias_by_mean(p)
         pda = shift_profiles(p, offsets)
-        if i in args.profiles:
-            plot_profile(p, f"original t={i}")
-            plot_profile(pda, f"dealiased t={i}")
-        dealiased.append(pda)
-    plot_all(dealiased, title="dealiased mean vel")
+        if args.profiles:
+            fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True, figsize=(10, 10))
+            fig.suptitle(f"spectra t={i}")
+            ax1.set_title("original")
+            ax1.set_xlabel("Velocity (m s$^{-1}$)")
+            ax1.set_ylabel("Range (m)")
+            plot_profile(p, ax1)
+            ax2.set_title("dealiased")
+            ax2.set_xlabel("Velocity (m s$^{-1}$)")
+            plot_profile(pda, ax2)
+        else:
+            dealiased.append(pda)
+
+    if dealiased:
+        fig, (ax1, ax2) = plt.subplots(2, sharex=True, sharey=True, figsize=(10, 10))
+        fig.suptitle("mean velocity")
+        ax1.set_title("original")
+        ax1.set_xlabel("Time index")
+        ax1.set_ylabel("Range (m)")
+        plot_all(profiles, ax1)
+        ax2.set_title("dealiased")
+        ax2.set_ylabel("Range (m)")
+        plot_all(dealiased, ax2)
 
     plt.show()
 

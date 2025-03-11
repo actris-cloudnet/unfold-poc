@@ -1,5 +1,8 @@
 matplotlib
+mypy
 netCDF4
 requests
 rpgPy
 tqdm
+types-requests
+types-tqdm

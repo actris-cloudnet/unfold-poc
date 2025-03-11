@@ -4,11 +4,11 @@ from dataclasses import dataclass
 from os import PathLike
 from pathlib import Path
 
+from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import requests
-from matplotlib.axis import Axis
 from numpy import ma
 from rpgpy import read_rpg
 from rpgpy.spcutil import radar_moment_calculation
@@ -31,8 +31,8 @@ def read_profiles(filename: PathLike | str) -> list[Profile]:
         vels = []
         for sequ in range(header["SequN"]):
             vel = header["velocity_vectors"][sequ, :]
-            ind = np.where(vel != 0)[0]
-            ind = slice(ind[0], ind[-1] + 1)
+            sgn = np.where(vel != 0)[0]
+            ind = slice(sgn[0], sgn[-1] + 1)
             sequ_ind = slice(
                 header["RngOffs"][sequ],
                 header["RngOffs"][sequ + 1] if sequ < header["SequN"] - 1 else None,
@@ -63,7 +63,7 @@ def filter_hot(data: npt.NDArray) -> npt.NDArray:
     return np.where(is_hot, 0, data)
 
 
-def plot_all(data: list[Profile], ax: Axis):
+def plot_all(data: list[Profile], ax: Axes):
     mean_vel = np.array([calc_mean_vel(p) for p in data])
     ax.pcolormesh(
         np.arange(len(data)),
@@ -76,7 +76,7 @@ def plot_all(data: list[Profile], ax: Axis):
     # ax.clim(-10, 10)
 
 
-def plot_profile(p: Profile, ax: Axis):
+def plot_profile(p: Profile, ax: Axes):
     max_vel = np.max([np.max(v) for v in p.vels])
     min_vel = np.min([np.min(v) for v in p.vels])
     for vel, alt, spec in zip(p.vels, p.alts, p.data):
@@ -88,7 +88,7 @@ def plot_profile(p: Profile, ax: Axis):
     # ax.plot(calc_mean_vel(p), np.concat(p.alts), "r")
 
 
-def dealias_by_mean(p: Profile):
+def dealias_by_mean(p: Profile) -> list[npt.NDArray[np.int32]]:
     offsets = []
     means = []
     for i, spec in enumerate(p.data):
@@ -145,7 +145,7 @@ def dealias_by_mean(p: Profile):
     return offsets
 
 
-def shift_profiles(p: Profile, offsets: npt.NDArray):
+def shift_profiles(p: Profile, offsets: list[npt.NDArray[np.int32]]):
     new_vels = []
     new_data = []
     for vel, alt, spec, off in zip(p.vels, p.alts, p.data, offsets):

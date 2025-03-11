@@ -258,10 +258,13 @@ def main():
 
     if args.profiles:
         profiles = [profiles[i] for i in args.profiles]
+        tindex = args.profiles
+    else:
+        tindex = list(range(len(profiles)))
 
     print("Dealiasing...")
     dealiased = []
-    for i, p in enumerate(tqdm(profiles)):
+    for i, p in zip(tindex, tqdm(profiles)):
         offsets = dealias_by_mean(p)
         pda = shift_profiles(p, offsets)
         if args.profiles:

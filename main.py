@@ -73,7 +73,6 @@ def plot_all(data: list[Profile], ax: Axes):
         vmin=-10,
         vmax=10,
     )
-    # ax.clim(-10, 10)
 
 
 def plot_profile(p: Profile, ax: Axes):
